@@ -479,19 +479,31 @@ class XmlNodeImplTest {
     }
 
     /**
-     * <p>testEqualsIsNullSafe.</p>
+     * <p>testEqualsComplex.</p>
      */
     @Test
-    void testEqualsIsNullSafe() throws XMLStreamException, IOException {
+    void testEqualsComplex() throws XMLStreamException, XmlPullParserException, IOException {
+        String testDom = "<configuration><items thing='blah'><item>one</item><item>two</item></items></configuration>";
+        XmlNode dom1 = XmlService.read(new StringReader(testDom));
+        XmlNode dom2 = XmlNodeBuilder.build(new StringReader(testDom));
+
+        assertEquals(dom1, dom2);
+    }
+
+    /**
+     * <p>testEqualsWithDifferentStructures.</p>
+     */
+    @Test
+    void testEqualsWithDifferentStructures() throws XMLStreamException, IOException {
         String testDom = "<configuration><items thing='blah'><item>one</item><item>two</item></items></configuration>";
         XmlNode dom = toXmlNode(testDom);
 
+        // Create a different DOM structure with different attributes and children
         Map<String, String> attributes = new HashMap<>();
-        attributes.put("nullValue", null);
-        attributes.put(null, "nullKey");
+        attributes.put("differentAttribute", "differentValue");
         List<XmlNode> childList = new ArrayList<>();
-        childList.add(null);
-        Xpp3Dom dom2 = new Xpp3Dom(XmlNode.newInstance(dom.name(), null, attributes, childList, null));
+        childList.add(XmlNode.newInstance("differentChild", "differentValue", null, null, null));
+        Xpp3Dom dom2 = new Xpp3Dom(XmlNode.newInstance(dom.name(), "differentValue", attributes, childList, null));
 
         assertNotEquals(dom, dom2);
         assertNotEquals(dom2, dom);

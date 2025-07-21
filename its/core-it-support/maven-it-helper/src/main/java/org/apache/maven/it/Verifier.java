@@ -122,6 +122,8 @@ public class Verifier {
 
     private Path logFile;
 
+    private boolean skipMavenRc = true;
+
     public Verifier(String basedir) throws VerificationException {
         this(basedir, null);
     }
@@ -142,7 +144,7 @@ public class Verifier {
             this.tempBasedir = Files.createTempDirectory("verifier");
             this.userHomeDirectory = Paths.get(System.getProperty("maven.test.user.home", "user.home"));
             Files.createDirectories(this.userHomeDirectory);
-            this.outerLocalRepository = Paths.get(System.getProperty("maven.test.repo.local", ".m2/repository"));
+            this.outerLocalRepository = Paths.get(System.getProperty("maven.test.repo.outer", ".m2/repository"));
             this.executorHelper = new HelperImpl(
                     VERIFIER_FORK_MODE,
                     Paths.get(System.getProperty("maven.home")),
@@ -168,6 +170,10 @@ public class Verifier {
 
     public void setExecutable(String executable) {
         this.executable = requireNonNull(executable);
+    }
+
+    public ExecutorHelper.Mode getDefaultMode() {
+        return executorHelper.getDefaultMode();
     }
 
     public void execute() throws VerificationException {
@@ -221,7 +227,8 @@ public class Verifier {
                     .cwd(basedir)
                     .userHomeDirectory(userHomeDirectory)
                     .jvmArguments(jvmArguments)
-                    .arguments(args);
+                    .arguments(args)
+                    .skipMavenRc(skipMavenRc);
             if (!systemProperties.isEmpty()) {
                 builder.jvmSystemProperties(new HashMap(systemProperties));
             }
@@ -337,6 +344,10 @@ public class Verifier {
         this.forkJvm = forkJvm;
     }
 
+    public void setSkipMavenRc(boolean skipMavenRc) {
+        this.skipMavenRc = skipMavenRc;
+    }
+
     public void setHandleLocalRepoTail(boolean handleLocalRepoTail) {
         this.handleLocalRepoTail = handleLocalRepoTail;
     }
@@ -346,10 +357,7 @@ public class Verifier {
     }
 
     public String getLocalRepositoryWithSettings(String settingsXml) {
-        String outerHead = System.getProperty("maven.repo.local", "").trim();
-        if (!outerHead.isEmpty()) {
-            return outerHead;
-        } else if (settingsXml != null) {
+        if (settingsXml != null) {
             // when invoked with settings.xml, the file must be resolved from basedir (as Maven does)
             // but we should not use basedir, as it may contain extensions.xml or a project, that Maven will eagerly
             // load, and may fail, as it would need more (like CI friendly versioning, etc).
@@ -365,8 +373,13 @@ public class Verifier {
                     .argument("-s")
                     .argument(settingsFile.toString()));
         } else {
-            return executorTool.localRepository(
-                    executorHelper.executorRequest().cwd(tempBasedir).userHomeDirectory(userHomeDirectory));
+            String outerHead = System.getProperty("maven.test.repo.local", "").trim();
+            if (!outerHead.isEmpty()) {
+                return outerHead;
+            } else {
+                return executorTool.localRepository(
+                        executorHelper.executorRequest().cwd(tempBasedir).userHomeDirectory(userHomeDirectory));
+            }
         }
     }
 
